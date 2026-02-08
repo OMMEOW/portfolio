@@ -1,5 +1,41 @@
 import React, { useState, useEffect, useCallback } from 'react';
 
+const RetroIcon = ({ name, className = "w-6 h-6" }) => {
+  const icons = {
+    // Pixel Art Icons (24x24 grid)
+    target: <svg viewBox="0 0 24 24" fill="currentColor"><path d="M11 2h2v6h-2V2zM2 13v-2h6v2H2zm14 0h6v-2h-6v2zm-5 9v-6h2v6h-2zM11 9h2v2h2v2h-2v2h-2v-2H9v-2h2V9z" /></svg>, // Custom Crosshair
+    cart: <svg viewBox="0 0 24 24" fill="currentColor"><path d="M4 2h2v2H4V2zm2 2h2v2H6V4zm2 2h14v10H8v2h12v2H6v-4H4V6h2V4zm2 2v6h2v-6h-2zm4 0v6h2v-6h-2zm4 0v6h2v-6h-2z" /></svg>,
+    palette: <svg viewBox="0 0 24 24" fill="currentColor"><path d="M4 4h16v16H4V4zm2 2v12h12V6H6zm2 2h2v2H8V8zm4 0h2v2h-2V8zm4 0h2v2h-2V8z" /></svg>, // Simple Art Board
+    paintn: <svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 3h8v2H8V3zm0 2H6v4H4v12h16V9h-2V5h-2v4H8V5zm8 6h2v8H6v-8h2v6h2v-4h2v2h2v-2h2v-2z" /></svg>,
+    fire: <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 1h2v8h8v4h-2v-2h-8V5h-2V3h2V1zM8 7V5h2v2H8zM6 9V7h2v2H6zm-2 2V9h2v2H4zm10 8v2h-2v2h-2v-8H2v-4h2v2h8v6h2zm2-2v2h-2v-2h2zm2-2v2h-2v-2h2zm0 0h2v-2h-2v2z" /></svg>,
+    chart: <svg viewBox="0 0 24 24" fill="currentColor"><path d="M14 6h8v8h-2v-4h-2V8h-4V6zm2 6v-2h2v2h-2zm-2 2v-2h2v2h-2zm-2 0h2v2h-2v-2zm-2-2h2v2h-2v-2zm-2 0v-2h2v2H8zm-2 2v-2h2v2H6zm-2 2v-2h2v2H4zm0 0v2H2v-2h2z" /></svg>,
+    robot: <svg viewBox="0 0 24 24" fill="currentColor"><path d="M2 5h2v2H2V5zm4 4H4V7h2v2zm2 0H6v2H4v2H2v6h20v-6h-2v-2h-2V9h2V7h2V5h-2v2h-2v2h-2V7H8v2zm0 0h8v2h2v2h2v4H4v-4h2v-2h2V9zm2 4H8v2h2v-2zm4 0h2v2h-2v-2z" /></svg>,
+    code: <svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5h2v2H8V5zM6 7h2v2H6V7zM4 9h2v2H4V9zm-2 2h2v2H2v-2zm2 2h2v2H4v-2zm2 2h2v2H6v-2zm2 2h2v2H8v-2zm8-12h-2v2h2V5zm2 2h-2v2h2V7zm2 2h-2v2h2V9zm2 2h-2v2h2v-2zm-2 2h-2v2h2v-2zm-2 2h-2v2h2v-2zm-2 2h-2v2h2v-2z" /></svg>,
+    triangle: <svg viewBox="0 0 24 24" fill="currentColor"><path d="M11 20h2V8h2V6h-2V4h-2v2H9v2h2v12zM7 10V8h2v2H7zm0 0v2H5v-2h2zm10 0V8h-2v2h2zm0 0v2h2v-2h-2z" /></svg>, // Arrow Up
+    book: <svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 3h8v2H3v12h8V5h2v12h8V5h-8V3h10v16H13v2h-2v-2H1V3h2zm16 7h-4v2h4v-2zm-4-3h4v2h-4V7zm2 6h-2v2h2v-2z" /></svg>,
+    brush: <svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 3h8v2H8V3zm0 2H6v4H4v12h16V9h-2V5h-2v4H8V5zm8 6h2v8H6v-8h2v6h2v-4h2v2h2v-2h2v-2z" /></svg>,
+    server: <svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 3h18v18H3V3zm2 2v6h14V5H5zm14 8H5v6h14v-6zM7 7h2v2H7V7zm2 8H7v2h2v-2z" /></svg>,
+    star: <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2h2v4h4v2h-4v4h4v2h-4v6h-4v-4h-4v4h-4v-6h4v-2h-4v-4h4v-2h2z" /></svg>, // Custom Pixel Star
+    trophy: <svg viewBox="0 0 24 24" fill="currentColor"><path d="M16 3H6v2H2v10h6V5h8v10h6V5h-4V3h-2zm4 4v6h-2V7h2zM6 13H4V7h2v6zm12 2H6v2h12v-2zm-7 2h2v2h3v2H8v-2h3v-2z" /></svg>,
+    users: <svg viewBox="0 0 24 24" fill="currentColor"><path d="M11 0H5v2H3v6h2v2h6V8H5V2h6V0zm0 2h2v6h-2V2zM0 14h2v4h12v2H0v-6zm2 0h12v-2H2v2zm14 0h-2v6h2v-6zM15 0h4v2h-4V0zm4 8h-4v2h4V8zm0-6h2v6h-2V2zm5 12h-2v4h-4v2h6v-6zm-6-2h4v2h-4v-2z" /></svg>,
+    lock: <svg viewBox="0 0 24 24" fill="currentColor"><path d="M15 2H9v2H7v4H4v14h16V8h-3V4h-2V2zm0 2v4H9V4h6zm-6 6h9v10H6V10h3zm4 3h-2v4h2v-4z" /></svg>,
+    sound_on: <svg viewBox="0 0 24 24" fill="currentColor"><path d="M11 2h2v20h-2v-2H9v-2h2V6H9V4h2V2zM7 8V6h2v2H7zm0 8H3V8h4v2H5v4h2v2zm0 0v2h2v-2H7zm10-6h-2v4h2v-4zm2-2h2v8h-2V8zm0 8v2h-4v-2h4zm0-10v2h-4V6h4z" /></svg>,
+    sound_off: <svg viewBox="0 0 24 24" fill="currentColor"><path d="M13 2h-2v2H9v2H7v2H3v8h4v2h2v2h2v2h2V2zM9 18v-2H7v-2H5v-4h2V8h2V6h2v12H9zm10-6.777h-2v-2h-2v2h2v2h-2v2h2v-2h2v2h2v-2h-2v-2zm0 0h2v-2h-2v2z" /></svg>,
+    tv: <svg viewBox="0 0 24 24" fill="currentColor"><path d="M20 3H2v14h8v2H8v2h8v-2h-2v-2h8V3h-2zm-6 12H4V5h16v10h-6z" /></svg>,
+    heart: <svg viewBox="0 0 24 24" fill="currentColor"><path d="M9 2H5v2H3v2H1v6h2v2h2v2h2v2h2v2h2v2h2v-2h2v-2h2v-2h2v-2h2v-2h2V6h-2V4h-2V2h-4v2h-2v2h-2V4H9V2zm0 2v2h2v2h2V6h2V4h4v2h2v6h-2v2h-2v2h-2v2h-2v2h-2v-2H9v-2H7v-2H5v-2H3V6h2V4h4z" /></svg>,
+    heart_outline: <svg viewBox="0 0 24 24" fill="currentColor"><path d="M16.5 3c-1.74 0-3.41.81-4.5 2.09C10.91 3.81 9.24 3 7.5 3 4.42 3 2 5.42 2 8.5c0 3.78 3.4 6.86 8.55 11.54L12 21.35l1.45-1.32C18.6 15.36 22 12.28 22 8.5 22 5.42 19.58 3 16.5 3zm-4.4 15.55l-.1.1-.1-.1C7.14 14.24 4 11.39 4 8.5 4 6.5 5.5 5 7.5 5c1.54 0 3.04.99 3.57 2.36h1.87C13.46 5.99 14.96 5 16.5 5c2 0 3.5 1.5 3.5 3.5 0 2.89-3.14 5.74-7.9 10.05z" /></svg>,
+    check: <svg viewBox="0 0 24 24" fill="currentColor"><path d="M18 6h2v2h-2V6zm-2 4V8h2v2h-2zm-2 2v-2h2v2h-2zm-2 2h2v-2h-2v2zm-2 2h2v-2h-2v2zm-2 0v2h2v-2H8zm-2-2h2v2H6v-2zm0 0H4v-2h2v2z" /></svg>,
+    man: <svg viewBox="0 0 24 24" fill="currentColor"><path d="M15 2H9v2H7v6h2V4h6V2zm0 8H9v2h6v-2zm0-6h2v6h-2V4zM4 16h2v-2h12v2H6v4h12v-4h2v6H4v-6z" /></svg>,
+    woman: <svg viewBox="0 0 24 24" fill="currentColor"><path d="M15 2H9v2H7v6h2V4h6V2zm0 8H9v2h6v-2zm0-6h2v6h-2V4zM4 16h2v-2h12v2H6v4h12v-4h2v6H4v-6z" /></svg>, // Reusing user for now
+  };
+
+  return (
+    <div className={`inline-block ${className} leading-none`}>
+      {icons[name] || <span>?</span>}
+    </div>
+  );
+};
+
 export default function UltimateArcadePortfolio() {
   const [score, setScore] = useState(0);
   const [coins, setCoins] = useState(0);
@@ -39,8 +75,12 @@ export default function UltimateArcadePortfolio() {
       description: 'Vibrant design system for modern apps',
       difficulty: 'HARD',
       xp: 5000,
+      title: 'PROJECT NEON',
+      description: 'Vibrant design system for modern apps',
+      difficulty: 'HARD',
+      xp: 5000,
       color: 'bg-pink-500',
-      icon: '🎯',
+      icon: <RetroIcon name="target" />,
       unlocked: true,
       unlockCost: 0,
       completed: false,
@@ -53,7 +93,7 @@ export default function UltimateArcadePortfolio() {
       difficulty: 'MEDIUM',
       xp: 3500,
       color: 'bg-blue-500',
-      icon: '🛒',
+      icon: <RetroIcon name="cart" />,
       unlocked: true,
       unlockCost: 0,
       completed: false,
@@ -66,7 +106,7 @@ export default function UltimateArcadePortfolio() {
       difficulty: 'HARD',
       xp: 4500,
       color: 'bg-yellow-400',
-      icon: '🎨',
+      icon: <RetroIcon name="palette" />,
       unlocked: false,
       unlockCost: 10,
       completed: false,
@@ -79,7 +119,7 @@ export default function UltimateArcadePortfolio() {
       difficulty: 'EXPERT',
       xp: 7000,
       color: 'bg-purple-500',
-      icon: '💥',
+      icon: <RetroIcon name="fire" />,
       unlocked: false,
       unlockCost: 25,
       completed: false,
@@ -92,7 +132,7 @@ export default function UltimateArcadePortfolio() {
       difficulty: 'MEDIUM',
       xp: 4000,
       color: 'bg-green-400',
-      icon: '📈',
+      icon: <RetroIcon name="chart" />,
       unlocked: false,
       unlockCost: 50,
       completed: false,
@@ -105,7 +145,7 @@ export default function UltimateArcadePortfolio() {
       difficulty: 'EXPERT',
       xp: 8000,
       color: 'bg-orange-500',
-      icon: '🤖',
+      icon: <RetroIcon name="robot" />,
       unlocked: false,
       unlockCost: 75,
       completed: false,
@@ -117,12 +157,12 @@ export default function UltimateArcadePortfolio() {
   const [projectStates, setProjectStates] = useState(projects);
 
   const skills = [
-    { name: 'REACT', level: 95, maxLevel: 100, color: 'bg-blue-500', icon: '⚛️', xp: 9500 },
-    { name: 'NEXT.JS', level: 90, maxLevel: 100, color: 'bg-pink-500', icon: '▲', xp: 9000 },
-    { name: 'TYPESCRIPT', level: 88, maxLevel: 100, color: 'bg-yellow-400', icon: '📘', xp: 8800 },
-    { name: 'TAILWIND', level: 92, maxLevel: 100, color: 'bg-green-400', icon: '🎨', xp: 9200 },
-    { name: 'NODE.JS', level: 85, maxLevel: 100, color: 'bg-purple-500', icon: '🟢', xp: 8500 },
-    { name: 'DESIGN', level: 93, maxLevel: 100, color: 'bg-orange-500', icon: '✨', xp: 9300 },
+    { name: 'REACT', level: 95, maxLevel: 100, color: 'bg-blue-500', icon: <RetroIcon name="code" />, xp: 9500 },
+    { name: 'NEXT.JS', level: 90, maxLevel: 100, color: 'bg-pink-500', icon: <RetroIcon name="triangle" />, xp: 9000 },
+    { name: 'TYPESCRIPT', level: 88, maxLevel: 100, color: 'bg-yellow-400', icon: <RetroIcon name="book" />, xp: 8800 },
+    { name: 'TAILWIND', level: 92, maxLevel: 100, color: 'bg-green-400', icon: <RetroIcon name="brush" />, xp: 9200 },
+    { name: 'NODE.JS', level: 85, maxLevel: 100, color: 'bg-purple-500', icon: <RetroIcon name="server" />, xp: 8500 },
+    { name: 'DESIGN', level: 93, maxLevel: 100, color: 'bg-orange-500', icon: <RetroIcon name="star" />, xp: 9300 },
   ];
 
   const [skillLevels, setSkillLevels] = useState(skills);
@@ -607,17 +647,17 @@ export default function UltimateArcadePortfolio() {
       {miniGameActive && (
         <div className="fixed inset-0 z-40 bg-black/80 backdrop-blur-sm flex items-center justify-center">
           <div className="relative w-full h-full max-w-4xl">
-            <div className="absolute top-4 left-1/2 transform -translate-x-1/2 pixel-font text-yellow-400 text-xl">
-              SCORE: {miniGameScore} 🎯
+            <div className="absolute top-4 left-1/2 transform -translate-x-1/2 pixel-font text-yellow-400 text-xl flex items-center gap-2">
+              SCORE: {miniGameScore} <RetroIcon name="target" />
             </div>
             {targets.map(target => (
               <button
                 key={target.id}
                 onClick={(e) => hitTarget(target.id, e)}
-                className="absolute w-16 h-16 bg-pink-500 border-4 border-black pixel-border-sm animate-bounce cursor-crosshair"
+                className="absolute w-16 h-16 bg-pink-500 border-4 border-black pixel-border-sm animate-bounce cursor-crosshair flex items-center justify-center text-white"
                 style={{ left: `${target.x}%`, top: `${target.y}%` }}
               >
-                🎯
+                <RetroIcon name="target" className="w-8 h-8" />
               </button>
             ))}
           </div>
@@ -665,7 +705,7 @@ export default function UltimateArcadePortfolio() {
               <span className="pixel-font text-yellow-400">x{coins}</span>
             </button>
             <div className="flex gap-2 items-center text-purple-400">
-              <span>⭐</span>
+              <RetroIcon name="star" />
               <span className="pixel-font">SP:{skillPoints}</span>
             </div>
             <div className="pixel-font text-green-400">LV.{currentLevel}</div>
@@ -673,14 +713,14 @@ export default function UltimateArcadePortfolio() {
               onClick={() => setSoundEnabled(!soundEnabled)}
               className={`text-lg ${soundEnabled ? 'text-green-400' : 'text-gray-600'}`}
             >
-              {soundEnabled ? '🔊' : '🔇'}
+              <RetroIcon name={soundEnabled ? 'sound_on' : 'sound_off'} />
             </button>
             <button
               onClick={() => setCrtEnabled(!crtEnabled)}
               className={`text-lg px-2 ${crtEnabled ? 'text-green-400' : 'text-gray-600'}`}
               title="Toggle CRT Effect"
             >
-              📺
+              <RetroIcon name="tv" />
             </button>
             <div className="flex gap-1">
               {[...Array(3)].map((_, i) => (
@@ -688,7 +728,7 @@ export default function UltimateArcadePortfolio() {
                   key={i}
                   className={`text-lg transition-all ${i < lives ? 'text-pink-500 animate-pulse' : 'opacity-20'}`}
                 >
-                  ❤️
+                  <RetroIcon name="heart" />
                 </span>
               ))}
             </div>
@@ -793,10 +833,10 @@ export default function UltimateArcadePortfolio() {
           {/* Stats Grid */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-12">
             {[
-              { label: 'PROJECTS', value: projectStates.filter(p => p.completed).length + '+', color: 'text-pink-500 border-pink-500', icon: '🎮' },
-              { label: 'CLIENTS', value: '25+', color: 'text-blue-500 border-blue-500', icon: '👥' },
-              { label: 'AWARDS', value: achievements.length, color: 'text-yellow-400 border-yellow-400', icon: '🏆' },
-              { label: 'LEVEL', value: currentLevel, color: 'text-green-400 border-green-400', icon: '⭐' },
+              { label: 'PROJECTS', value: projectStates.filter(p => p.completed).length + '+', color: 'text-pink-500 border-pink-500', icon: <RetroIcon name="target" className="w-8 h-8" /> },
+              { label: 'CLIENTS', value: '25+', color: 'text-blue-500 border-blue-500', icon: <RetroIcon name="users" className="w-8 h-8" /> },
+              { label: 'AWARDS', value: achievements.length, color: 'text-yellow-400 border-yellow-400', icon: <RetroIcon name="trophy" className="w-8 h-8" /> },
+              { label: 'LEVEL', value: currentLevel, color: 'text-green-400 border-green-400', icon: <RetroIcon name="star" className="w-8 h-8" /> },
             ].map((stat, i) => (
               <button
                 key={i}
@@ -820,7 +860,7 @@ export default function UltimateArcadePortfolio() {
             <div className="inline-block bg-purple-500 text-black px-6 py-3 pixel-font text-sm mb-4">
               ⚡ SKILL TREE - SPEND {skillPoints} SP ⚡
             </div>
-            <h2 className="pixel-font text-4xl md:text-6xl text-purple-500 mb-4">
+            <h2 className="pixel-font text-4xl md:text-6xl text-purple-500 mb-4 flex items-center justify-center gap-4">
               ABILITIES
             </h2>
           </div>
@@ -888,12 +928,16 @@ export default function UltimateArcadePortfolio() {
                   }`}
               >
                 {project.completed && (
-                  <div className="absolute top-4 right-4 text-4xl animate-pulse">✅</div>
+                  <div className="absolute top-4 right-4 text-green-400 animate-pulse">
+                    <RetroIcon name="check" className="w-8 h-8" />
+                  </div>
                 )}
                 {!project.unlocked && (
                   <div className={`absolute inset-0 flex items-center justify-center border-8 border-black transition-colors ${coins >= project.unlockCost ? 'bg-black/60 hover:bg-black/40' : 'bg-black/80'}`}>
                     <div className="text-center">
-                      <div className="text-6xl mb-4 text-white">🔒</div>
+                      <div className="mb-4 text-white flex justify-center">
+                        <RetroIcon name="lock" className="w-16 h-16" />
+                      </div>
                       <div className={`pixel-font text-xs ${coins >= project.unlockCost ? 'text-green-400 animate-pulse' : 'text-gray-400'}`}>
                         {coins >= project.unlockCost ? `UNLOCK (-${project.unlockCost} 🪙)` : `NEED ${project.unlockCost} COINS`}
                       </div>
