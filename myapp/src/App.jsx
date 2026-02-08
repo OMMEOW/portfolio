@@ -68,6 +68,7 @@ export default function UltimateArcadePortfolio() {
   const [miniGameActive, setMiniGameActive] = useState(false);
   const [miniGameScore, setMiniGameScore] = useState(0);
   const [targets, setTargets] = useState([]);
+  const missTimeoutRef = React.useRef(null);
 
   const projects = [
     {
@@ -456,42 +457,53 @@ export default function UltimateArcadePortfolio() {
   const startMiniGame = () => {
     setMiniGameActive(true);
     setMiniGameScore(0);
+    setLives(3);
     setTargets([]);
     playSound('start');
-
-    // Spawn targets for 10 seconds
-    const spawnInterval = setInterval(() => {
-      const newTarget = {
-        id: Date.now(),
-        x: Math.random() * 80 + 10,
-        y: Math.random() * 60 + 20,
-      };
-      setTargets(prev => [...prev, newTarget]);
-
-      // Remove target after 2 seconds
-      setTimeout(() => {
-        setTargets(prev => prev.filter(t => t.id !== newTarget.id));
-      }, 2000);
-    }, 800);
-
-    setTimeout(() => {
-      clearInterval(spawnInterval);
-      setTimeout(() => {
-        setMiniGameActive(false);
-        setTargets([]);
-        if (miniGameScore >= 10) {
-          unlockAchievement('mini_game_pro');
-        }
-      }, 2000);
-    }, 10000);
   };
 
+  // Game Loop Effect
+  useEffect(() => {
+    if (!miniGameActive || lives <= 0) {
+      if (lives <= 0) setTargets([]); // Ensure clear on game over
+      if (missTimeoutRef.current) clearTimeout(missTimeoutRef.current);
+      return;
+    }
+
+    // Only spawn if no targets exist (One at a time mechanic)
+    if (targets.length === 0) {
+      // Calculate difficulty based on score
+      const delay = Math.max(200, 1000 - (miniGameScore * 50));
+      const duration = Math.max(800, 2000 - (miniGameScore * 100));
+
+      const spawnTimer = setTimeout(() => {
+        const newTarget = {
+          id: Date.now(),
+          x: Math.random() * 80 + 10,
+          y: Math.random() * 60 + 20,
+        };
+        setTargets([newTarget]);
+
+        // Set miss timeout
+        missTimeoutRef.current = setTimeout(() => {
+          setLives(prev => prev - 1);
+          setTargets([]); // Triggers next loop (if lives > 0)
+          playSound('hit'); // Miss sound (using 'hit' for now as negative feedback placeholder)
+        }, duration);
+
+      }, delay);
+
+      return () => clearTimeout(spawnTimer);
+    }
+  }, [miniGameActive, targets.length, lives, miniGameScore]);
+
   const hitTarget = (targetId, e) => {
-    setTargets(prev => prev.filter(t => t.id !== targetId));
+    if (missTimeoutRef.current) clearTimeout(missTimeoutRef.current);
+    setTargets([]); // Clear target immediately
     setMiniGameScore(prev => prev + 1);
     setScore(prev => prev + 500);
     setCoins(prev => prev + 2);
-    playSound('hit');
+    playSound('hit'); // Standard hit sound
     collectCoin(e, 2);
   };
 
@@ -646,21 +658,34 @@ export default function UltimateArcadePortfolio() {
       {/* Mini Game Overlay */}
       {miniGameActive && (
         <div className="fixed inset-0 z-40 bg-black/80 backdrop-blur-sm flex items-center justify-center">
-          <div className="relative w-full h-full max-w-4xl">
-            <div className="absolute top-4 left-1/2 transform -translate-x-1/2 pixel-font text-yellow-400 text-xl flex items-center gap-2">
-              SCORE: {miniGameScore} <RetroIcon name="target" />
+          {lives > 0 ? (
+            <div className="relative w-full h-full max-w-4xl cursor-crosshair">
+              <div className="absolute top-4 left-1/2 transform -translate-x-1/2 pixel-font text-yellow-400 text-xl flex items-center gap-2 bg-black/50 px-4 py-2 rounded border-2 border-white">
+                SCORE: {miniGameScore} <RetroIcon name="target" /> | LIVES: {lives} <RetroIcon name="heart" className="text-red-500" />
+              </div>
+              {targets.map(target => (
+                <button
+                  key={target.id}
+                  onMouseDown={(e) => { e.stopPropagation(); hitTarget(target.id, e); }}
+                  className="absolute w-16 h-16 border-4 border-white pixel-border-sm animate-bounce flex items-center justify-center text-white hover:scale-110 active:scale-95 transition-transform"
+                  style={{ left: `${target.x}%`, top: `${target.y}%`, backgroundColor: '#ff0055' }}
+                >
+                  <RetroIcon name="target" className="w-8 h-8" />
+                </button>
+              ))}
             </div>
-            {targets.map(target => (
+          ) : (
+            <div className="text-center animate-bounce">
+              <h1 className="pixel-font text-6xl text-red-600 mb-4 stroke-black">GAME OVER</h1>
+              <p className="pixel-font text-xl text-white mb-8">FINAL SCORE: {miniGameScore}</p>
               <button
-                key={target.id}
-                onClick={(e) => hitTarget(target.id, e)}
-                className="absolute w-16 h-16 bg-pink-500 border-4 border-black pixel-border-sm animate-bounce cursor-crosshair flex items-center justify-center text-white"
-                style={{ left: `${target.x}%`, top: `${target.y}%` }}
+                onClick={() => setMiniGameActive(false)}
+                className="bg-white text-black px-8 py-4 pixel-font border-4 border-gray-400 hover:bg-gray-200"
               >
-                <RetroIcon name="target" className="w-8 h-8" />
+                CLOSE
               </button>
-            ))}
-          </div>
+            </div>
+          )}
         </div>
       )}
 
