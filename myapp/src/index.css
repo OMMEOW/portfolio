@@ -1,0 +1,6 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Custom fonts if needed */
+/* The user's App.jsx imports 'Press Start 2P' via <style> tag so we don't need it here */
