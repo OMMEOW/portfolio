@@ -17,7 +17,12 @@ export default function UltimateArcadePortfolio() {
   const [lastClickTime, setLastClickTime] = useState(0);
   const [comboTimeout, setComboTimeout] = useState(null);
   const [soundEnabled, setSoundEnabled] = useState(true);
+  const [crtEnabled, setCrtEnabled] = useState(false);
   const [currentTestimonial, setCurrentTestimonial] = useState(0);
+  const [isRegistered, setIsRegistered] = useState(false);
+  const [showNameInput, setShowNameInput] = useState(false);
+  const [backendError, setBackendError] = useState(null);
+  const API_URL = 'http://localhost:5000/api';
   const [highScores, setHighScores] = useState([
     { name: 'DEVELOPER', score: 999999 },
     { name: 'DESIGNER', score: 888888 },
@@ -37,6 +42,7 @@ export default function UltimateArcadePortfolio() {
       color: 'bg-pink-500',
       icon: '🎯',
       unlocked: true,
+      unlockCost: 0,
       completed: false,
       tech: ['React', 'Figma', 'TypeScript'],
       year: '2024'
@@ -49,6 +55,7 @@ export default function UltimateArcadePortfolio() {
       color: 'bg-blue-500',
       icon: '🛒',
       unlocked: true,
+      unlockCost: 0,
       completed: false,
       tech: ['Next.js', 'Stripe', 'MongoDB'],
       year: '2023'
@@ -60,7 +67,8 @@ export default function UltimateArcadePortfolio() {
       xp: 4500,
       color: 'bg-yellow-400',
       icon: '🎨',
-      unlocked: coins >= 10,
+      unlocked: false,
+      unlockCost: 10,
       completed: false,
       tech: ['Three.js', 'GSAP', 'Webflow'],
       year: '2024'
@@ -72,7 +80,8 @@ export default function UltimateArcadePortfolio() {
       xp: 7000,
       color: 'bg-purple-500',
       icon: '💥',
-      unlocked: coins >= 25,
+      unlocked: false,
+      unlockCost: 25,
       completed: false,
       tech: ['Canvas', 'WebGL', 'P5.js'],
       year: '2023'
@@ -84,7 +93,8 @@ export default function UltimateArcadePortfolio() {
       xp: 4000,
       color: 'bg-green-400',
       icon: '📈',
-      unlocked: coins >= 50,
+      unlocked: false,
+      unlockCost: 50,
       completed: false,
       tech: ['Vue.js', 'WebSocket', 'Chart.js'],
       year: '2024'
@@ -96,7 +106,8 @@ export default function UltimateArcadePortfolio() {
       xp: 8000,
       color: 'bg-orange-500',
       icon: '🤖',
-      unlocked: coins >= 75,
+      unlocked: false,
+      unlockCost: 75,
       completed: false,
       tech: ['Python', 'TensorFlow', 'FastAPI'],
       year: '2024'
@@ -207,7 +218,7 @@ export default function UltimateArcadePortfolio() {
     const now = Date.now();
 
     let newCombo;
-    if (now - lastClickTime < 2500) {
+    if (now - lastClickTime < 500) {
       newCombo = Math.min(clickCombo + 1, 20);
     } else {
       newCombo = 1;
@@ -259,10 +270,114 @@ export default function UltimateArcadePortfolio() {
   };
 
   const startGame = () => {
+    // If not registered and not showing input, show name input
+    if (!isRegistered && !showNameInput) {
+      setShowNameInput(true);
+      return;
+    }
     setGameStarted(true);
     setScore(100);
     playSound('start');
     collectCoin({ currentTarget: { getBoundingClientRect: () => ({ left: 0, top: 0 }) }, clientX: window.innerWidth / 2, clientY: window.innerHeight / 2 }, 1);
+  };
+
+  const registerPlayer = async (name) => {
+    try {
+      const res = await fetch(`${API_URL}/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: name })
+      });
+      const data = await res.json();
+
+      if (res.ok) {
+        setPlayerName(data.player.username);
+        setScore(data.player.score);
+        setCoins(data.player.coins);
+        setSkillPoints(data.player.skillPoints);
+        setCurrentLevel(data.player.level);
+
+        // Restore Unlocked/Completed Projects
+        if (data.player.projectsUnlocked && data.player.projectsUnlocked.length > 0) {
+          const newProjects = [...projectStates];
+          data.player.projectsUnlocked.forEach(index => {
+            if (newProjects[index]) newProjects[index].unlocked = true;
+          });
+          if (data.player.projectsCompleted) {
+            data.player.projectsCompleted.forEach(index => {
+              if (newProjects[index]) newProjects[index].completed = true;
+            });
+          }
+          setProjectStates(newProjects);
+        }
+
+        // Restore Skills
+        if (data.player.skills && data.player.skills.length > 0) {
+          const newSkills = [...skillLevels];
+          data.player.skills.forEach(s => {
+            const idx = newSkills.findIndex(sk => sk.name === s.name);
+            if (idx !== -1) {
+              newSkills[idx].level = s.level;
+              newSkills[idx].xp = s.level * 100;
+            }
+          });
+          setSkillLevels(newSkills);
+        }
+
+        setIsRegistered(true);
+      } else {
+        setBackendError(data.message);
+      }
+    } catch (err) {
+      console.error('Backend error:', err);
+      // Fallback for offline mode
+      setPlayerName(name);
+      setIsRegistered(true);
+      startGame();
+    }
+  };
+
+  const saveProgress = async () => {
+    if (!isRegistered) return;
+    try {
+      await fetch(`${API_URL}/save`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          username: playerName,
+          score,
+          coins,
+          level: currentLevel,
+          skillPoints,
+          projectsUnlocked: projectStates.map((p, i) => p.unlocked ? i : -1).filter(i => i !== -1),
+          projectsCompleted: projectStates.map((p, i) => p.completed ? i : -1).filter(i => i !== -1),
+          skills: skillLevels.map(s => ({ name: s.name, level: s.level }))
+        })
+      });
+    } catch (err) {
+      console.error('Save failed:', err);
+    }
+  };
+
+  // Auto-save every 30 seconds
+  useEffect(() => {
+    const interval = setInterval(saveProgress, 30000);
+    return () => clearInterval(interval);
+  }, [score, coins, currentLevel, playerName, isRegistered]);
+
+  const unlockProject = (index) => {
+    const project = projectStates[index];
+    if (project.unlocked) return;
+
+    if (coins >= project.unlockCost) {
+      setCoins(prev => prev - project.unlockCost);
+      const newProjects = [...projectStates];
+      newProjects[index].unlocked = true;
+      setProjectStates(newProjects);
+      playSound('levelup'); // Use existing sound
+    } else {
+      playSound('hit'); // Error feedback
+    }
   };
 
   const completeProject = (index) => {
@@ -514,6 +629,9 @@ export default function UltimateArcadePortfolio() {
         <div className="retro-grid w-full h-full"></div>
       </div>
 
+      {/* CRT Overlay */}
+      {crtEnabled && <div className="crt-overlay"></div>}
+
       {/* HUD */}
       <div className="fixed top-0 w-full z-50 bg-black/90 backdrop-blur-sm border-b-4 border-pink-500">
         <div className="max-w-7xl mx-auto px-4 py-3 flex justify-between items-center text-xs md:text-sm flex-wrap gap-2">
@@ -557,6 +675,13 @@ export default function UltimateArcadePortfolio() {
             >
               {soundEnabled ? '🔊' : '🔇'}
             </button>
+            <button
+              onClick={() => setCrtEnabled(!crtEnabled)}
+              className={`text-lg px-2 ${crtEnabled ? 'text-green-400' : 'text-gray-600'}`}
+              title="Toggle CRT Effect"
+            >
+              📺
+            </button>
             <div className="flex gap-1">
               {[...Array(3)].map((_, i) => (
                 <span
@@ -571,8 +696,8 @@ export default function UltimateArcadePortfolio() {
         </div>
       </div>
 
-      {/* INSERT COIN Screen */}
-      {!gameStarted && (
+      {/* INITIAL INSERT COIN Screen (First Screen) */}
+      {!gameStarted && !showNameInput && (
         <div className="fixed inset-0 z-40 bg-black flex items-center justify-center animate-slide-down">
           <div className="text-center">
             <h1 className="pixel-font text-4xl md:text-6xl text-pink-500 mb-8 animate-blink">
@@ -582,7 +707,7 @@ export default function UltimateArcadePortfolio() {
               ▼ ▼ ▼
             </div>
             <button
-              onClick={startGame}
+              onClick={() => setShowNameInput(true)}
               className="bg-yellow-400 text-black px-12 py-6 pixel-font text-sm border-4 border-black pixel-border hover:translate-x-2 hover:translate-y-2 transition-all duration-300 mb-8"
             >
               PRESS START
@@ -595,6 +720,48 @@ export default function UltimateArcadePortfolio() {
           </div>
         </div>
       )}
+
+      {/* ENTER PLAYER NAME Screen (Second Screen - No Animation) */}
+      {!gameStarted && showNameInput && !isRegistered && (
+        <div className="fixed inset-0 z-40 bg-black flex items-center justify-center">
+          <div className="text-center">
+            <h1 className="pixel-font text-3xl md:text-5xl text-blue-500 mb-8">
+              ENTER PLAYER NAME
+            </h1>
+            <input
+              type="text"
+              maxLength={8}
+              autoFocus
+              className="bg-black text-yellow-400 border-4 border-blue-500 pixel-font text-2xl p-4 mb-8 text-center uppercase outline-none focus:border-pink-500"
+              placeholder="PLAYER 1"
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') registerPlayer(e.target.value || 'PLAYER 1');
+              }}
+            />
+            <br />
+            <button
+              onClick={(e) => {
+                const input = e.target.parentElement.querySelector('input');
+                registerPlayer(input.value || 'PLAYER 1');
+              }}
+              className="bg-blue-500 text-black px-8 py-4 pixel-font text-sm border-4 border-black pixel-border hover:scale-105 transition-all"
+            >
+              CONFIRM
+            </button>
+            {backendError && <div className="text-red-500 pixel-font mt-4 text-xs">{backendError}</div>}
+
+            <button
+              onClick={() => setShowNameInput(false)}
+              className="block mx-auto mt-4 text-gray-500 pixel-font text-xs hover:text-white"
+            >
+              BACK
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Intro Screen (After Registration, before Game) - Optional, or jump straight to game */}
+      {/* We skip this now to jump straight to game as requested "animation to the home screen" happens via gameStarted state */}
 
       {/* Hero Section */}
       <section className="min-h-screen flex items-center justify-center px-4 pt-20 relative">
@@ -685,8 +852,8 @@ export default function UltimateArcadePortfolio() {
                   onClick={() => levelUpSkill(i)}
                   disabled={skillPoints < 1 || skill.level >= skill.maxLevel}
                   className={`w-full py-2 pixel-font text-xs border-2 border-current transition-all ${skillPoints >= 1 && skill.level < skill.maxLevel
-                      ? 'bg-white text-black hover:bg-black hover:text-white cursor-pointer'
-                      : 'opacity-50 cursor-not-allowed'
+                    ? 'bg-white text-black hover:bg-black hover:text-white cursor-pointer'
+                    : 'opacity-50 cursor-not-allowed'
                     }`}
                 >
                   {skill.level >= skill.maxLevel ? 'MAXED OUT!' : 'UPGRADE (1 SP)'}
@@ -713,23 +880,22 @@ export default function UltimateArcadePortfolio() {
             {projectStates.map((project, i) => (
               <button
                 key={i}
-                onClick={() => completeProject(i)}
-                disabled={!project.unlocked}
+                onClick={() => {
+                  if (project.unlocked) completeProject(i);
+                  else unlockProject(i);
+                }}
                 className={`${project.unlocked ? project.color : 'bg-gray-700'} p-6 border-8 border-black pixel-border hover:translate-x-2 hover:translate-y-2 transition-all duration-300 cursor-pointer text-left relative ${project.completed ? 'opacity-75' : ''
-                  } ${!project.unlocked ? 'cursor-not-allowed' : ''}`}
+                  }`}
               >
                 {project.completed && (
                   <div className="absolute top-4 right-4 text-4xl animate-pulse">✅</div>
                 )}
                 {!project.unlocked && (
-                  <div className="absolute inset-0 bg-black/80 flex items-center justify-center border-8 border-black">
+                  <div className={`absolute inset-0 flex items-center justify-center border-8 border-black transition-colors ${coins >= project.unlockCost ? 'bg-black/60 hover:bg-black/40' : 'bg-black/80'}`}>
                     <div className="text-center">
-                      <div className="text-6xl mb-4">🔒</div>
-                      <div className="pixel-font text-xs text-white">
-                        {project.title === 'PIXEL PERFECT' && 'NEED 10 COINS'}
-                        {project.title === 'COLOR BURST' && 'NEED 25 COINS'}
-                        {project.title === 'CRYPTO DASH' && 'NEED 50 COINS'}
-                        {project.title === 'AI PLAYGROUND' && 'NEED 75 COINS'}
+                      <div className="text-6xl mb-4 text-white">🔒</div>
+                      <div className={`pixel-font text-xs ${coins >= project.unlockCost ? 'text-green-400 animate-pulse' : 'text-gray-400'}`}>
+                        {coins >= project.unlockCost ? `UNLOCK (-${project.unlockCost} 🪙)` : `NEED ${project.unlockCost} COINS`}
                       </div>
                     </div>
                   </div>
@@ -835,8 +1001,8 @@ export default function UltimateArcadePortfolio() {
                 <div
                   key={achievement.id}
                   className={`border-4 p-6 pixel-border-sm transition-all ${unlocked
-                      ? 'bg-yellow-400 text-black border-yellow-400 animate-pixel-pop'
-                      : 'bg-gray-900 text-gray-600 border-gray-600'
+                    ? 'bg-yellow-400 text-black border-yellow-400 animate-pixel-pop'
+                    : 'bg-gray-900 text-gray-600 border-gray-600'
                     }`}
                 >
                   <div className="text-4xl mb-3 text-center">{unlocked ? achievement.icon : '🔒'}</div>
@@ -973,7 +1139,7 @@ export default function UltimateArcadePortfolio() {
           {/* Social Links */}
           <div className="flex gap-4 justify-center flex-wrap mb-12">
             {[
-              { name: 'GH', color: 'bg-yellow-400 border-yellow-400', label: 'GitHub' },
+              { name: 'GH', color: 'bg-yellow-400 border-yellow-400', label: 'GitHub', url: 'https://github.com/OMMEOW' },
               { name: 'LI', color: 'bg-green-400 border-green-400', label: 'LinkedIn' },
               { name: 'TW', color: 'bg-purple-500 border-purple-500', label: 'Twitter' },
               { name: 'DR', color: 'bg-orange-500 border-orange-500', label: 'Dribbble' },
@@ -1010,7 +1176,7 @@ export default function UltimateArcadePortfolio() {
             SCORE: {score.toString().padStart(8, '0')} • COINS: {coins} • LEVEL: {currentLevel}
           </p>
           <p className="text-gray-700 text-xs">
-            © 2024 ARCADE PORTFOLIO • MADE WITH ❤️ & NEXT.JS
+            © 2026 MY ARCADE PORTFOLIO • MADE WITH ❤️ & NEXT.JS
           </p>
         </div>
       </footer>
