@@ -27,6 +27,8 @@ const RetroIcon = ({ name, className = "w-6 h-6" }) => {
     check: <svg viewBox="0 0 24 24" fill="currentColor"><path d="M18 6h2v2h-2V6zm-2 4V8h2v2h-2zm-2 2v-2h2v2h-2zm-2 2h2v-2h-2v2zm-2 2h2v-2h-2v2zm-2 0v2h2v-2H8zm-2-2h2v2H6v-2zm0 0H4v-2h2v2z" /></svg>,
     man: <svg viewBox="0 0 24 24" fill="currentColor"><path d="M15 2H9v2H7v6h2V4h6V2zm0 8H9v2h6v-2zm0-6h2v6h-2V4zM4 16h2v-2h12v2H6v4h12v-4h2v6H4v-6z" /></svg>,
     woman: <svg viewBox="0 0 24 24" fill="currentColor"><path d="M15 2H9v2H7v6h2V4h6V2zm0 8H9v2h6v-2zm0-6h2v6h-2V4zM4 16h2v-2h12v2H6v4h12v-4h2v6H4v-6z" /></svg>, // Reusing user for now
+    zap: <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 1h2v8h8v4h-2v-2h-8V5h-2V3h2V1zM8 7V5h2v2H8zM6 9V7h2v2H6zm-2 2V9h2v2H4zm10 8v2h-2v2h-2v-8H2v-4h2v2h8v6h2zm2-2v2h-2v-2h2zm2-2v2h-2v-2h2zm0 0h2v-2h-2v2z" /></svg>,
+    seven: <svg viewBox="0 0 24 24" fill="currentColor"><path d="M4 2h16v4h-2v2h-2v2h-2v2h-2v2h-2v4h-2v2h-2v-4h2v-2h2v-2h2v-2h2v-2h2V6H4V2z" /></svg>,
   };
 
   return (
@@ -69,6 +71,13 @@ export default function UltimateArcadePortfolio() {
   const [miniGameScore, setMiniGameScore] = useState(0);
   const [targets, setTargets] = useState([]);
   const missTimeoutRef = React.useRef(null);
+
+  // Slot Machine State
+  const [slotMachineActive, setSlotMachineActive] = useState(false);
+  const [slotReels, setSlotReels] = useState(['seven', 'seven', 'seven']);
+  const [isSpinning, setIsSpinning] = useState(false);
+  const [slotMessage, setSlotMessage] = useState('INSERT COIN (10 🪙)');
+  const [slotWin, setSlotWin] = useState(0);
 
   const projects = [
     {
@@ -497,6 +506,77 @@ export default function UltimateArcadePortfolio() {
     }
   }, [miniGameActive, targets.length, lives, miniGameScore]);
 
+  const spinSlots = () => {
+    if (isSpinning) return;
+
+    const cost = 10;
+    if (coins < cost) {
+      playSound('hit');
+      setSlotMessage('NEED 10 COINS!');
+      setTimeout(() => setSlotMessage('INSERT COIN (10 🪙)'), 1000);
+      return;
+    }
+
+    setCoins(prev => prev - cost);
+    setIsSpinning(true);
+    setSlotWin(0);
+    setSlotMessage('SPINNING...');
+    playSound('start');
+
+    const symbols = ['seven', 'star', 'heart', 'fire', 'target', 'zap'];
+    let spins = 0;
+
+    const interval = setInterval(() => {
+      setSlotReels([
+        symbols[Math.floor(Math.random() * symbols.length)],
+        symbols[Math.floor(Math.random() * symbols.length)],
+        symbols[Math.floor(Math.random() * symbols.length)]
+      ]);
+      spins++;
+      // Stop logic
+      if (spins > 20) {
+        clearInterval(interval);
+
+        // Determine result
+        const finalReels = [
+          symbols[Math.floor(Math.random() * symbols.length)],
+          symbols[Math.floor(Math.random() * symbols.length)],
+          symbols[Math.floor(Math.random() * symbols.length)]
+        ];
+
+        setSlotReels(finalReels);
+        setIsSpinning(false);
+
+        // Payout
+        if (finalReels[0] === finalReels[1] && finalReels[1] === finalReels[2]) {
+          // Jackpot
+          const symbol = finalReels[0];
+          let prize = 50;
+          if (symbol === 'seven') prize = 500;
+          if (symbol === 'star') prize = 200;
+          if (symbol === 'heart') prize = 100;
+
+          setSlotWin(prize);
+          setCoins(prev => prev + prize);
+          setScore(prev => prev + (prize * 10));
+          setSlotMessage(`JACKPOT! +${prize} 🪙`);
+          playSound('powerup');
+          if (prize >= 200) unlockAchievement('fifty_coins');
+        } else if (finalReels[0] === finalReels[1] || finalReels[1] === finalReels[2] || finalReels[0] === finalReels[2]) {
+          // Match 2
+          setSlotWin(5);
+          setCoins(prev => prev + 5);
+          setSlotMessage('MATCH 2! +5 🪙');
+          playSound('coin');
+        } else {
+          setSlotMessage('TRY AGAIN!');
+          // Reset message after delay
+          setTimeout(() => setSlotMessage('INSERT COIN (10 🪙)'), 1500);
+        }
+      }
+    }, 100);
+  };
+
   const hitTarget = (targetId, e) => {
     if (missTimeoutRef.current) clearTimeout(missTimeoutRef.current);
     setTargets([]); // Clear target immediately
@@ -761,6 +841,8 @@ export default function UltimateArcadePortfolio() {
         </div>
       </div>
 
+      {/* Slot Machine Overlay Removed */}
+
       {/* INITIAL INSERT COIN Screen (First Screen) */}
       {!gameStarted && !showNameInput && (
         <div className="fixed inset-0 z-40 bg-black flex items-center justify-center animate-slide-down">
@@ -874,6 +956,124 @@ export default function UltimateArcadePortfolio() {
                 <div className="text-xs pixel-font opacity-80">{stat.label}</div>
               </button>
             ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Retro Slot Machine Section */}
+      <section className="py-20 bg-gray-900 border-y-4 border-black relative overflow-hidden">
+        {/* Decorative Grid Background */}
+        <div className="absolute inset-0 retro-grid opacity-10 pointer-events-none"></div>
+
+        <div className="max-w-4xl mx-auto px-4 relative z-10 flex flex-col items-center">
+
+          {/* Machine Cabinet */}
+          <div className="bg-red-600 p-4 rounded-t-3xl rounded-b-lg border-x-8 border-t-8 border-b-8 border-red-800 shadow-[0_20px_50px_rgba(0,0,0,0.5)] relative">
+
+            {/* Machine Header */}
+            <div className="bg-yellow-400 p-4 mb-6 border-4 border-black text-center rounded-t-xl relative overflow-hidden">
+              <div className="absolute inset-0 bg-gradient-to-b from-transparent to-black/10"></div>
+              <h2 className="pixel-font text-2xl md:text-3xl text-red-600 animate-pulse drop-shadow-md">777 LUCKY SLOTS 777</h2>
+              <div className="flex justify-center gap-4 mt-2 text-[10px] md:text-xs pixel-font text-black/80">
+                <span>WIN BIG!</span>
+                <span>•</span>
+                <span>JACKPOT 500 XP</span>
+              </div>
+            </div>
+
+            {/* Screen Area */}
+            <div className="bg-black p-6 md:p-8 border-[12px] border-gray-700 rounded-lg relative shadow-[inset_0_0_30px_rgba(0,0,0,1)]">
+
+              {/* Glass Reflection */}
+              <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/5 to-transparent pointer-events-none z-20 rounded-sm"></div>
+
+              {/* Reels Container */}
+              <div className="flex justify-center gap-2 md:gap-4 mb-8 bg-gray-800 p-4 border-4 border-gray-600 rounded shadow-inner">
+                {slotReels.map((symbol, i) => (
+                  <div key={i} className="w-16 h-24 md:w-24 md:h-32 bg-white border-4 border-gray-300 flex items-center justify-center text-4xl overflow-hidden relative rounded-sm shadow-[inset_0_0_10px_rgba(0,0,0,0.2)]">
+                    {/* Reel Gradient */}
+                    <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-black/20 pointer-events-none z-10"></div>
+
+                    <div className={`transition-all duration-100 ${isSpinning ? 'animate-spin-fast blur-sm scale-110' : ''}`}>
+                      <RetroIcon name={symbol} className="w-10 h-10 md:w-16 md:h-16 text-black drop-shadow-sm" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Digital Display */}
+              <div className="bg-green-900/50 border-4 border-green-800 p-3 mb-6 text-center shadow-[inset_0_0_10px_rgba(0,0,0,0.5)]">
+                <div className={`pixel-font text-sm md:text-lg ${slotWin > 0 ? 'text-green-400 animate-bounce' : 'text-green-500/80'}`}>
+                  {slotMessage}
+                </div>
+              </div>
+            </div>
+
+            {/* Control Panel */}
+            <div className="bg-gray-800 p-4 mt-4 border-4 border-black rounded-b-lg flex items-center justify-between gap-4 shadow-lg relative">
+              {/* Coin Slot */}
+              <div className="flex flex-col items-center">
+                <div className="w-2 h-8 bg-black mb-1 border border-gray-600"></div>
+                <span className="text-[10px] text-gray-400 pixel-font">INSERT COIN</span>
+                <span className="text-yellow-400 pixel-font text-xs mt-1">10 🪙</span>
+              </div>
+
+              {/* Spin Button (Main) */}
+              <button
+                onClick={spinSlots}
+                disabled={isSpinning}
+                className={`flex-1 py-4 px-6 md:px-12 pixel-font text-xl md:text-2xl border-b-8 active:border-b-0 active:translate-y-2 transition-all rounded shadow-lg mx-4 ${isSpinning
+                    ? 'bg-gray-600 border-gray-800 text-gray-400 cursor-not-allowed'
+                    : 'bg-red-500 border-red-800 text-white hover:bg-red-400 hover:shadow-red-500/50'
+                  }`}
+              >
+                {isSpinning ? '...' : 'SPIN'}
+              </button>
+
+              {/* Decorative Lights */}
+              <div className="flex flex-col gap-2">
+                <div className={`w-3 h-3 rounded-full ${isSpinning ? 'bg-yellow-500 animate-ping' : 'bg-red-900'}`}></div>
+                <div className={`w-3 h-3 rounded-full ${slotWin > 0 ? 'bg-green-500 animate-ping' : 'bg-green-900'}`}></div>
+              </div>
+            </div>
+
+            {/* Mechanical Lever (Visual) */}
+            <div className="absolute top-1/2 -right-12 md:-right-16 transform -translate-y-1/2 h-48 w-8 bg-gray-600 border-2 border-black rounded-r-lg z-0">
+              <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-r from-gray-800 via-gray-400 to-gray-800"></div>
+              {/* Handle Stick */}
+              <div className={`absolute left-1/2 transform -translate-x-1/2 w-4 bg-gray-300 border border-black transition-all duration-300 origin-bottom ${isSpinning ? 'h-10 top-[80%] rotate-x-180' : 'h-32 -top-16'}`}></div>
+              {/* Knob */}
+              <button
+                onClick={spinSlots}
+                disabled={isSpinning}
+                className={`absolute left-1/2 transform -translate-x-1/2 w-12 h-12 bg-red-600 rounded-full border-4 border-red-800 shadow-lg hover:scale-110 transition-all duration-300 z-10 cursor-pointer ${isSpinning ? 'top-[80%]' : '-top-20'}`}
+              >
+                <div className="absolute top-2 right-3 w-3 h-3 bg-white/50 rounded-full"></div>
+              </button>
+              {/* Base Joint */}
+              <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 w-10 h-10 bg-black rounded-full border-2 border-gray-500 shadow-inner"></div>
+            </div>
+
+          </div>
+
+          {/* Payout Table (Bottom) */}
+          <div className="mt-8 bg-black/80 p-4 rounded border-2 border-gray-700 pixel-font text-xs text-gray-400 grid grid-cols-2 md:grid-cols-4 gap-4 w-full max-w-4xl text-center">
+            <div className="flex flex-col items-center gap-1 group hover:text-yellow-400 transition-colors">
+              <div className="flex gap-1"><RetroIcon name="seven" className="w-4 h-4 text-yellow-500" />x3</div>
+              <span className="text-yellow-500">500 XP</span>
+            </div>
+            <div className="flex flex-col items-center gap-1 group hover:text-yellow-400 transition-colors">
+              <div className="flex gap-1"><RetroIcon name="star" className="w-4 h-4 text-yellow-500" />x3</div>
+              <span className="text-white">200 XP</span>
+            </div>
+            <div className="flex flex-col items-center gap-1 group hover:text-yellow-400 transition-colors">
+              <div className="flex gap-1"><RetroIcon name="heart" className="w-4 h-4 text-red-500" />x3</div>
+              <span className="text-white">100 XP</span>
+            </div>
+            <div className="flex flex-col items-center gap-1 group hover:text-yellow-400 transition-colors">
+              <span>ANY PAIR</span>
+              <span className="text-green-400">5 COINS</span>
+            </div>
           </div>
         </div>
       </section>
